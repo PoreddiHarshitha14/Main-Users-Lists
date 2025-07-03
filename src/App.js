@@ -54,9 +54,9 @@ const App = () => {
 
     // Find the max referral number among users and subscribers
     const allReferralIds = [
-      ...users.map(u => parseInt(u.referralId.replace('REF', ''))),
-      ...subscribers.map(s => parseInt(s.referralId.replace('REF', '')))
-    ];
+      ...users.map(u => Number((u.referralId || '').replace('REF', ''))),
+      ...subscribers.map(s => Number((s.referralId || '').replace('REF', '')))
+    ].filter(n => Number.isFinite(n) && n > 0);
     const nextSerial = allReferralIds.length > 0 ? Math.max(...allReferralIds) + 1 : 1;
     const referralId = `REF${String(nextSerial).padStart(4, '0')}`;
 
@@ -89,18 +89,25 @@ const App = () => {
       return;
     }
 
-    // Find the max referral number among users and subscribers
-    const allReferralIds = [
-      ...users.map(u => parseInt(u.referralId.replace('REF', ''))),
-      ...subscribers.map(s => parseInt(s.referralId.replace('REF', '')))
-    ];
-    const nextSerial = allReferralIds.length > 0 ? Math.max(...allReferralIds) + 1 : 1;
-    const referralId = `REF${String(nextSerial).padStart(4, '0')}`;
+    // Make referredBy required
+    if (!subscriberFormData.referredBy) {
+      alert("Referral ID is required for subscribers!");
+      return;
+    }
 
+    // Check if referredBy exists in users
+    const referrerExists = users.some(
+      (user) => user.referralId === subscriberFormData.referredBy
+    );
+    if (!referrerExists) {
+      alert("Referral ID not found! Please enter a valid User Referral ID.");
+      return;
+    }
+
+    // Do NOT generate referralId for subscribers
     const newSubscriber = {
       id: Date.now(),
       username: subscriberFormData.username,
-      referralId,
       phone: subscriberFormData.phone,
       email: subscriberFormData.email,
       password: subscriberFormData.password,
@@ -136,14 +143,14 @@ const App = () => {
   };
 
   const filteredUsers = users.filter(user => 
-    user.username.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    user.referralId.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  (user.username && user.username.toLowerCase().includes(searchTerm.toLowerCase())) || 
+  (user.referralId && user.referralId.toLowerCase().includes(searchTerm.toLowerCase()))
+);
 
-  const filteredSubscribers = subscribers.filter(subscriber => 
-    subscriber.username.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    subscriber.referralId.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+const filteredSubscribers = subscribers.filter(subscriber => 
+  (subscriber.username && subscriber.username.toLowerCase().includes(searchTerm.toLowerCase())) || 
+  (subscriber.referralId && subscriber.referralId.toLowerCase().includes(searchTerm.toLowerCase()))
+);
 
   const subscribersWithReferrers = filteredSubscribers.map(subscriber => {
     const referrer = users.find(user => user.referralId === subscriber.referredBy);
@@ -346,7 +353,7 @@ const App = () => {
             <h2><i className="fas fa-user-edit"></i> Add Subscriber</h2>
             <form onSubmit={handleSubscriberRegister}>
               <div className="form-group">
-                <label htmlFor="username"><i className="fas fa-user"></i> Username</label>
+                <label htmlFor="username"><i className="fas fa-user"></i> Subscriber Name</label>
                 <i className="fas fa-user form-icon"></i>
                 <input 
                   type="text" 
@@ -420,6 +427,7 @@ const App = () => {
                   placeholder="Enter Referral ID of the referrer (optional)"
                   value={subscriberFormData.referredBy}
                   onChange={handleSubscriberInputChange}
+                  required
                 />
               </div>
               <button type="submit" className="register-btn">
